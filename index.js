@@ -15,6 +15,9 @@ const lblConnTo = document.getElementById("lblConnTo");
 const tableBody = document.getElementById("tableBody");
 const table = document.getElementById('fileTable');
 const alertDiv = document.getElementById('alertDiv');
+const settingsWarning = document.getElementById("settingsWarning");
+const progressMsgQS = document.getElementById("progressMsgQS");
+const progressMsgDIY = document.getElementById("progressMsgDIY");
 
 //import { Transport } from './cp210x-webusb.js'
 import { Transport } from './webserial.js'
@@ -33,8 +36,8 @@ let index = 1;
 
 disconnectButton.style.display = "none";
 eraseButton.style.display = "none";
-consoleStopButton.style.display = "none";
-filesDiv.style.display = "none";
+//consoleStopButton.style.display = "none";
+//filesDiv.style.display = "none";
 
 
 function convertUint8ArrayToBinaryString(u8Array) {
@@ -97,15 +100,16 @@ connectButton.onclick = async () => {
     }
 
     console.log("Settings done for :" + chip);
-    lblBaudrate.style.display = "none";
-    lblConnTo.innerHTML = "Connected to device: " + chip;
+    lblConnTo.innerHTML = "<span style=color:#736a6a'>Connected to device: </span><b>" + chip + "</b>";
     lblConnTo.style.display = "block";
-    baudrates.style.display = "none";
+    $("#baudrates").prop("disabled", true);
+    $("#flashButton").prop("disabled", false);
+    $("#programButton").prop("disabled", false);
+    settingsWarning.style.display = "initial";
     connectButton.style.display = "none";
     disconnectButton.style.display = "initial";
     eraseButton.style.display = "initial";
     filesDiv.style.display = "initial";
-    consoleDiv.style.display = "none";
 }
 
 resetButton.onclick = async () => {
@@ -178,16 +182,20 @@ disconnectButton.onclick = async () => {
     await transport.disconnect();
     term.clear();
     connected = false;
-    baudrates.style.display = "initial";
+    $("#baudrates").prop("disabled", false);
+    $("#flashButton").prop("disabled", true);
+    $("#programButton").prop("disabled", true);
+    settingsWarning.style.display = "none";
     connectButton.style.display = "initial";
     disconnectButton.style.display = "none";
     eraseButton.style.display = "none";
     lblConnTo.style.display = "none";
-    filesDiv.style.display = "none";
+    //filesDiv.style.display = "none";
     alertDiv.style.display = "none";
     consoleDiv.style.display = "initial";
 };
 
+/*
 consoleStartButton.onclick = async () => {
     if (device === null) {
         device = await navigator.serial.requestPort({
@@ -213,6 +221,7 @@ consoleStartButton.onclick = async () => {
     console.log("quitting console");
 }
 
+
 consoleStopButton.onclick = async () => {
     await transport.disconnect();
     term.clear();
@@ -220,6 +229,7 @@ consoleStopButton.onclick = async () => {
     consoleStopButton.style.display = "none";
     programDiv.style.display = "initial";
 }
+*/
 
 function validate_program_inputs() {
     let offsetArr = []
@@ -262,7 +272,7 @@ programButton.onclick = async () => {
         alertDiv.style.display = "block";
         return;
     }
-
+    progressMsgDIY.style.display = "inline";
     let fileArr = [];
     let offset = 0x1000;
     var rowCount = table.rows.length;
@@ -278,4 +288,32 @@ programButton.onclick = async () => {
     }
     esploader.write_flash({fileArray: fileArr, flash_size: 'keep'});
    
+}
+
+flashButton.onclick = async () => {
+    let framework = document.getElementById("framework").value;
+    let deviceType = document.getElementById("device").value;
+    let flashFile = framework + "_" + deviceType + ".bin";
+    
+    progressMsgQS.style.display = "inline";
+    
+    var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://127.0.0.1:8887/' + flashFile, true);
+        xhr.responseType = "blob";
+        xhr.send();
+        xhr.onload = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+               
+                var blob = new Blob([xhr.response], {type: "application/octet-stream"});
+                var reader = new FileReader();
+
+                reader.onload = (function(theFile) {
+                    return function(e) {
+                        esploader.write_flash({fileArray: [{data:e.target.result, address:0x1000}], flash_size: 'keep'});
+                    };
+                })(blob);
+
+                reader.readAsBinaryString(blob);
+            }
+        }
 }
