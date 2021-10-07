@@ -1,4 +1,9 @@
 'use strict';
+import pako from "pako";
+import CryptoJS from "crypto-js";
+
+
+console.log("crypto", CryptoJS);
 
 class ESP8266ROM {
     static CHIP_NAME = "ESP8266";
@@ -1446,4 +1451,3 @@ class ESPLoader {
 
 
 export { ESPLoader };
-

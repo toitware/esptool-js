@@ -153,8 +153,8 @@ class Transport {
 
         this.reader = reader;
         if (timeout > 0) {
-            t = setTimeout(function() {
-                reader.cancel();
+            t = setTimeout(async () => {
+                await reader.cancel();
                 reader.releaseLock();
             }, timeout);
         }
@@ -187,7 +187,7 @@ class Transport {
     }
     disconnect = async () => {
         if (this.reader !== null) {
-            this.reader.cancel();
+            await this.reader.cancel();
             this.reader.releaseLock();
         }
         await this.device.close();

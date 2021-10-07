@@ -1,6 +1,20 @@
 {
+  "name": "@toitware/esptool-js",
+  "license": "Apache-2.0",
   "dependencies": {
     "crypto-js": "^4.0.0",
+    "pako": "^2.0.4",
     "xterm": "^4.13.0"
+  },
+  "scripts": {
+    "build": "babel webserial.js ESPLoader.js module.js -d build",
+    "clean": "rm -rf build"
+  },
+  "main": "./build/module.js",
+  "types": "@types/index.d.ts",
+  "devDependencies": {
+    "@babel/cli": "^7.15.7",
+    "@babel/core": "^7.15.8",
+    "@babel/plugin-proposal-class-properties": "^7.14.5"
   }
 }
