@@ -107,7 +107,7 @@ class Transport {
         const reader = this.device.readable.getReader();
         if (timeout > 0) {
             t = setTimeout(function() {
-                reader.cancel();
+                reader.cancel().catch((e) => console.log("reader.cancel error", e))
                 reader.releaseLock();
             }, timeout);
         }
@@ -154,7 +154,7 @@ class Transport {
         this.reader = reader;
         if (timeout > 0) {
             t = setTimeout(function() {
-                reader.cancel();
+                reader.cancel().catch((e) => console.log("reader.cancel error", e))
                 reader.releaseLock();
             }, timeout);
         }
@@ -187,7 +187,7 @@ class Transport {
     }
     disconnect = async () => {
         if (this.reader !== null) {
-            this.reader.cancel();
+            this.reader.cancel().catch((e) => console.log("reader.cancel error", e))
             this.reader.releaseLock();
         }
         await this.device.close();
