@@ -1,5 +1,8 @@
 'use strict';
 
+import CryptoJS from "crypto-js";
+import Pako from "pako";
+
 class ESP8266ROM {
     static CHIP_NAME = "ESP8266";
     static CHIP_DETECT_MAGIC_VALUE = 0xfff0c101;
@@ -641,14 +644,14 @@ class ESPLoader {
     }
 
     log(str) {
-        if (this.transport) {
+        if (this.terminal) {
             this.terminal.writeln(str);
         } else {
             console.log(str);
         }
     }
     write_char(str) {
-        if (this.transport) {
+        if (this.terminal) {
             this.terminal.write(str);
         } else {
             console.log(str);
@@ -730,7 +733,7 @@ class ESPLoader {
         if (wait_response) {
             try {
                 var p = await this.transport.read({timeout: timeout});
-                //console.log("Response " + p);
+                console.log("Response " + p);
                 const resp = p[0];
                 const op_ret = p[1];
                 const len_ret = this._bytearray_to_short(p[2], p[3]);
@@ -746,7 +749,7 @@ class ESPLoader {
                 if (e === "timeout") {
                     throw(e);
                 }
-            }
+            }q
         }
     }
 
@@ -811,15 +814,15 @@ class ESPLoader {
             await this._sleep(50);
             await this.transport.setDTR(false);
         }
-        var i = 0;
-        while (1) {
+        var i = 20;
+        while (i--) {
             try {
                 const res = await this.transport.read({timeout: 1000});
-                i += res.length;
                 //console.log("Len = " + res.length);
                 //var str = new TextDecoder().decode(res);
                 //this.log(str);
             } catch (e) {
+                console.log("connect_attempt read", e)
                 if (e === "timeout") {
                     break;
                 }
@@ -950,7 +953,6 @@ class ESPLoader {
     }
 
     flash_begin = async (size, offset) => {
-
         var num_blocks = Math.floor((size + this.FLASH_WRITE_SIZE - 1) / this.FLASH_WRITE_SIZE);
         var erase_size = this.chip.get_erase_size(offset, size);
 
@@ -977,6 +979,7 @@ class ESPLoader {
             this.log("Took "+((t2-t1)/1000)+"."+((t2-t1)%1000)+"s to erase flash block");
         }
 
+        return num_blocks;
     }
 
     flash_defl_begin = async (size, compsize, offset) => {
@@ -1032,7 +1035,6 @@ class ESPLoader {
         console.log("flash_defl_block " + data[0].toString(16), + " " + data[1].toString(16));
 
         await this.check_command({op_description:"write compressed data to flash after seq " + seq, op: this.ESP_FLASH_DEFL_DATA, data: pkt, chk: checksum, timeout: timeout});
-
     }
 
     flash_finish = async ({reboot = false } = {}) => {
@@ -1182,7 +1184,7 @@ class ESPLoader {
         var decoded = atob(this.chip.ROM_TEXT);
         var chardata = decoded.split('').map(function(x){return x.charCodeAt(0);});
         var bindata = new Uint8Array(chardata);
-        var text = pako.inflate(bindata);
+        var text = Pako.inflate(bindata);
 
         decoded = atob(this.chip.ROM_DATA);
         chardata = decoded.split('').map(function(x){return x.charCodeAt(0);});
@@ -1341,7 +1343,7 @@ class ESPLoader {
         }
 
         if (this.IS_STUB === true && erase_all === true) {
-            this.erase_flash();
+            await this.erase_flash();
         }
         let image, address;
         for (var i = 0; i < fileArray.length; i++) {
@@ -1362,7 +1364,7 @@ class ESPLoader {
             let blocks;
             if (compress) {
                 let uncimage = this.bstrToUi8(image);
-                image = pako.deflate(uncimage, {level:9});
+                image = Pako.deflate(uncimage, {level:9});
                 console.log("Compressed image ");
                 console.log(image);
                 blocks = await this.flash_defl_begin(uncsize, image.length, address);
@@ -1383,7 +1385,7 @@ class ESPLoader {
                 let block = image.slice(0, this.FLASH_WRITE_SIZE);
                 if (compress) {
                     /*
-                    let block_uncompressed = pako.inflate(block).length;
+                    let block_uncompressed = Pako.inflate(block).length;
                     //let len_uncompressed = block_uncompressed.length;
                     bytes_written += block_uncompressed;
                     if (this.timeout_per_mb(this.ERASE_WRITE_TIMEOUT_PER_MB, block_uncompressed) > 3000) {
@@ -1446,4 +1448,3 @@ class ESPLoader {
 
 
 export { ESPLoader };
-
