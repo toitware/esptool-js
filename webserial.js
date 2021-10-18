@@ -44,11 +44,8 @@ class Transport {
     write = async (data) => {
         const writer = this.device.writable.getWriter();
         var out_data = this.slip_writer(data);
-        try {
-            await writer.write(out_data.buffer);
-        } finally {
-            writer.releaseLock();
-        }
+        await writer.write(out_data.buffer);
+        writer.releaseLock();
     }
 
     _appendBuffer(buffer1, buffer2) {
@@ -105,48 +102,35 @@ class Transport {
     read = async ({timeout=0, min_data=12} = {}) => {
         let t;
         let packet = null;
+        let value, done;
         console.log("Read with timeout " + timeout);
-        let reader = this.device.readable.getReader();
-        let timedout = false;
+        const reader = this.device.readable.getReader();
         if (timeout > 0) {
             t = setTimeout(function() {
-                console.log("timeout")
-                timedout = true;
-                reader.cancel().catch((e) => console.log("reader.cancel error", e))
+                reader.cancel();
                 reader.releaseLock();
             }, timeout);
         }
-        console.log("new reader")
+
         do {
             this.reader = reader;
             var o = await reader.read();
-            this.reader = null;
+            this.reader = null;p
             if (packet == null) {
-                packet = o.value;
+                packet = value;
             } else {
-                var p = new Uint8Array(this._appendBuffer(packet.buffer, o.value.buffer));
+                var p = new Uint8Array(this._appendBuffer(packet.buffer, value.buffer));
                 packet = p;
             }
-
-            if (o.done) {
-                if (timedout) {
-                    break;
-                } else {
-                    console.log("reload reader")
-                    reader.releaseLock();
-                    reader = this.device.readable.getReader();
-                    await new Promise((resolve) => setTimeout(resolve, 1));
-                    continue
-                }
+            if (done) {
+                break;
             }
+        } while (packet.length < min_data);
 
-        } while ((packet ? packet.length : 0) < min_data);
-
-        if (timedout) {
+        if (done) {
             console.log("timed out");
             throw("timeout");
         } else {
-            console.log("packet", packet)
             if (timeout > 0) {
                 clearTimeout(t);
             }
@@ -168,7 +152,7 @@ class Transport {
         this.reader = reader;
         if (timeout > 0) {
             t = setTimeout(function() {
-                reader.cancel().catch((e) => console.log("reader.cancel error", e))
+                reader.cancel();
                 reader.releaseLock();
             }, timeout);
         }
@@ -200,14 +184,9 @@ class Transport {
         this.baudrate = baud;
     }
     disconnect = async () => {
-        const reader = this.reader;
-        if (reader !== null) {
-            try {
-                await reader.cancel();
-            } catch(e) {
-                console.log("disconnect reader.cancel error", e)
-            }
-            reader.releaseLock();
+        if (this.reader !== null) {
+            this.reader.cancel();
+            this.reader.releaseLock();
         }
         await this.device.close();
     }

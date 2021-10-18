@@ -1,8 +1,5 @@
 'use strict';
 
-import CryptoJS from "crypto-js";
-import Pako from "pako";
-
 class ESP8266ROM {
     static CHIP_NAME = "ESP8266";
     static CHIP_DETECT_MAGIC_VALUE = 0xfff0c101;
@@ -733,7 +730,7 @@ class ESPLoader {
         if (wait_response) {
             try {
                 var p = await this.transport.read({timeout: timeout});
-                console.log("Response " + p);
+                // console.log("Response " + p);
                 const resp = p[0];
                 const op_ret = p[1];
                 const len_ret = this._bytearray_to_short(p[2], p[3]);
@@ -749,7 +746,7 @@ class ESPLoader {
                 if (e === "timeout") {
                     throw(e);
                 }
-            }q
+            }
         }
     }
 
@@ -822,7 +819,6 @@ class ESPLoader {
                 //var str = new TextDecoder().decode(res);
                 //this.log(str);
             } catch (e) {
-                console.log("connect_attempt read", e)
                 if (e === "timeout") {
                     break;
                 }
@@ -1184,7 +1180,7 @@ class ESPLoader {
         var decoded = atob(this.chip.ROM_TEXT);
         var chardata = decoded.split('').map(function(x){return x.charCodeAt(0);});
         var bindata = new Uint8Array(chardata);
-        var text = Pako.inflate(bindata);
+        var text = pako.inflate(bindata);
 
         decoded = atob(this.chip.ROM_DATA);
         chardata = decoded.split('').map(function(x){return x.charCodeAt(0);});
@@ -1364,7 +1360,7 @@ class ESPLoader {
             let blocks;
             if (compress) {
                 let uncimage = this.bstrToUi8(image);
-                image = Pako.deflate(uncimage, {level:9});
+                image = pako.deflate(uncimage, {level:9});
                 console.log("Compressed image ");
                 console.log(image);
                 blocks = await this.flash_defl_begin(uncsize, image.length, address);
@@ -1385,14 +1381,14 @@ class ESPLoader {
                 let block = image.slice(0, this.FLASH_WRITE_SIZE);
                 if (compress) {
                     /*
-                    let block_uncompressed = Pako.inflate(block).length;
+                    let block_uncompressed = pako.inflate(block).length;
                     //let len_uncompressed = block_uncompressed.length;
                     bytes_written += block_uncompressed;
                     if (this.timeout_per_mb(this.ERASE_WRITE_TIMEOUT_PER_MB, block_uncompressed) > 3000) {
                         block_timeout = this.timeout_per_mb(this.ERASE_WRITE_TIMEOUT_PER_MB, block_uncompressed);
                     } else {
                         block_timeout = 3000;
-                    }*/ // XXX: Partial block inflate seems to be unsupported in Pako. Hardcoding timeout
+                    }*/ // XXX: Partial block inflate seems to be unsupported in pako. Hardcoding timeout
                     let block_timeout = 5000;
                     if (this.IS_STUB === false) {
                         timeout = block_timeout;
